@@ -1,5 +1,5 @@
 ---
-title: TOUCHGRASS, a Telegram bot that sends your group chat outside (local Gemma 3 + OpenStreetMap)
+title: Touch Grass, a website that runs an open-weight model on your phone to get you outside
 published: false
 tags: devchallenge, hf26challenge
 ---
@@ -8,81 +8,56 @@ tags: devchallenge, hf26challenge
 
 ## What I Built
 
-**TOUCHGRASS** is a Telegram bot for friend groups that live in their group chat. Instead
-of keeping you on the screen, it does three things to get you outside:
+**Touch Grass** is a website that answers one question: *when and where should I go outside today?* Then it checks that you actually went.
 
-- 🌿 **`/touchgrass`** finds the best 2-hour weather window before sunset and real nearby
-  parks, gardens, trails and viewpoints, then writes a short plan with one small mission
-  ("find three different leaves", "watch the sunset from the viewpoint"). Friends tap
-  **🙋 I'm in**.
-- 📸 **`/touched`**: send a photo from outside. A local vision model checks it was really
-  taken outdoors (screenshots and photos of a screen are rejected), says what it spotted
-  ("banyan tree, crow"), and grows your streak. **`/grassboard`** turns it into a group
-  competition.
-- ☀️ **Golden-hour nudge**: about 2 hours before sunset, if the weather is good, the bot
-  tells the group how much light is left, with a button that plans the walk. It stays
-  quiet in storms.
+1. Tap **📍 Use my location**. You get the **best 2-hour window before sunset** (scored from the hourly forecast), **real parks, gardens, trails and viewpoints nearby** on a map, and a short plan with a **mini mission** ("spot a crow and three kinds of leaves").
+2. Tap **🌿 I'm going outside**. The page turns into a dark, calm card: *Put the phone away.* Just your mission and the sunset time.
+3. Back home, tap **📸 I'm back. Prove it.** and take a photo. An AI checks it was really taken outdoors (not indoors, not a screenshot, not a photo of a screen), says what it spotted, and adds a day to your **streak** and **grass journal**.
 
-The screen part is one message. The rest happens outside.
+It's for anyone who opens their phone "for a minute" and looks up two hours later. The screen part takes about a minute. The rest happens outside.
 
 ## Demo
 
-<!-- TODO: add a short screen recording: /touchgrass → plan → 🙋 I'm in → /touched photo → streak -->
+**Live:** https://aminul821.github.io/TOUCHGRASS/
+
+<!-- TODO: add a short phone screen recording: location → plan → I'm going outside → photo → streak -->
 
 ## Code
 
 {% github aminul821/TOUCHGRASS %}
 
-- `touchgrass/llm.py`: a tiny client for a local Ollama server (text, images, JSON-schema output)
-- `touchgrass/outdoors.py`: Open-Meteo forecast and sunset, OpenStreetMap (Overpass) green spots, and the weather-window scoring
-- `touchgrass/bot.py`: the commands, streaks and nudges (python-telegram-bot)
-
-`docker compose up` starts the bot and Ollama together.
+No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles weather, places and scoring, `js/plan.js` the language model, `js/vision.js` the photo check, and `js/journal.js` the streaks.
 
 ## How I Built It
 
-**Open-weight model:** [Gemma 3 4B](https://ollama.com/library/gemma3) served by
-**[Ollama](https://ollama.com)** next to the bot (`docker compose up` starts both). One model handles both jobs:
-writing plans (text) and checking `/touched` photos (vision). It runs on a laptop CPU.
+**Everything AI runs in the visitor's browser.** There's no backend at all, just a static site on GitHub Pages.
 
-**Open data, no API keys:** [Open-Meteo](https://open-meteo.com) for the hourly forecast
-and sunrise/sunset, and [OpenStreetMap](https://www.openstreetmap.org) via the Overpass
-API for parks, gardens, woods, beaches, peaks, viewpoints and hiking routes.
+- **Plan writer:** [WebLLM](https://github.com/mlc-ai/web-llm) runs **Qwen 2.5 1.5B Instruct** (open weights, 4-bit) on WebGPU. You can switch to Llama 3.2 1B or Gemma 3 1B, or point it at your own **Ollama** server.
+- **Photo checker:** [transformers.js](https://github.com/huggingface/transformers.js) runs **CLIP ViT-B/32** (open weights) on WebAssembly, so it works even on phones without WebGPU. It's zero-shot: the photo is scored against labels like "a photo of a park with grass and trees" vs "a screenshot of a phone or computer" vs "a photo taken indoors in a room". It passes only if 60%+ of the probability goes to the outdoor labels. A second pass names what's in it ("trees", "bird", "clouds").
+- **Open data:** [Open-Meteo](https://open-meteo.com) for the hourly forecast and sunset, and [OpenStreetMap](https://www.openstreetmap.org) via Overpass for green spots, drawn with Leaflet. Neither needs an API key.
 
-**Facts first, model second.** I didn't want an LLM inventing a park that doesn't exist,
-so the pipeline is:
+**Facts first, model second.** A 1.5B model will happily invent a park, so it never gets the chance:
 
-1. Code picks the best window: each daylight hour is scored on rain chance, storm codes,
-   temperature comfort and wind, and the best 2 consecutive hours win.
-2. Code gets real spots from OSM, removes duplicates and sorts them by distance.
-3. The model gets only that JSON and is told to use only those places. It writes the
-   friendly part: which spot, what to bring, a mini mission.
-4. If Ollama is down, a plain template plan is posted instead. The feature never breaks.
+1. Code scores every daylight hour (rain chance, storm codes, temperature comfort, wind) and picks the best 2 in a row.
+2. Code gets real named places from OpenStreetMap, removes duplicates and sorts them by distance.
+3. The model gets only that JSON, with instructions to use only those places, and writes the human part: which spot, what to bring, a mission.
+4. If anything fails (no WebGPU, offline, model error), you still get a plain template plan. A photo that couldn't be checked is never counted.
 
-**Photo checks use structured output.** Ollama's `format` field takes a JSON schema, so the
-vision model must answer `{outdoors, screenshot, nature[], comment}`. The bot reads
-booleans, not free text. A day only counts if `outdoors && !screenshot`, and forwarded
-photos are rejected before the model sees them.
+**Respect the download.** The plain plan shows instantly. The ~1 GB language model downloads only when you tap **✨ Let the on-device AI write it**. After that, WebLLM's cache makes it load in seconds. A service worker caches the app, so once CLIP (~90 MB) is cached, the photo check and journal work **on the trail with no signal**.
 
 ## Why Does Open Innovation Matter?
 
-- **Photos stay at home.** People send pictures of where they are right now. Those
-  pictures go to a model on our own server, not to a company's API. For a friends' group
-  that's the difference between "fun" and "no thanks".
-- **It costs nothing to run.** An open model on a small server or an old laptop, plus
-  key-free open weather and map data, means no per-request bill. A nudge every afternoon
-  costs nothing.
-- **Swap the model with one setting.** `GRASS_MODEL=gemma3:4b` on a laptop,
-  `gemma3:12b` or `qwen2.5vl` on a bigger machine. Same code, no vendor lock-in, and no
-  deprecation emails.
-- **Open maps make it honest.** The plan can only use real places from OpenStreetMap, the
-  same map the local hiking community edits.
+- **Your location and photos never leave your phone.** This app sees exactly where you are and pictures of where you've been. With a closed API that data goes to someone else's server. Here the model weights come to *you* instead.
+- **It costs nothing to run, for anyone.** No inference bill and no API keys means I can leave it online for free forever, and anyone can fork it and host their own copy on GitHub Pages in two minutes.
+- **Swap models freely.** A dropdown switches between Qwen, Llama and Gemma. Got a gaming PC? Point it at Ollama and use a bigger model. No vendor lock-in and no deprecation emails.
+- **It works where closed APIs can't:** on a hill with one bar of signal, after the models are cached.
+- **Open maps make it honest.** The plan can only use places that exist in OpenStreetMap, the same map local hikers and gardeners edit.
 
-<!-- TODO: where did the open approach beat a closed one for you? e.g. latency on the box, privacy reactions from the group -->
+<!-- TODO: where did the open approach beat a closed one for you in practice? e.g. how fast Qwen 1.5B ran on your phone or laptop -->
 
 ## Taking it outside
 
-<!-- TODO (bonus points): the group actually used it. Which spot did /touchgrass pick? Who's leading /grassboard? Did the vision check catch anyone faking it? -->
+<!-- TODO (bonus points): use it for real. Which spot did it pick? Did you finish the mission? Did CLIP catch you trying to cheat with a screenshot? Add a journal screenshot. -->
 
 ## My Agent Session
 
