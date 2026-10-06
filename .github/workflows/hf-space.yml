@@ -1,11 +1,9 @@
 name: Deploy the Hermes server to Hugging Face Spaces
 
+# Manual only (Actions → Run workflow). Docker Spaces need a Hugging Face PRO account.
 # Needs one repository secret: HF_TOKEN (a Hugging Face token with "write" access).
 # Optional repository variable HF_SPACE (default: touchgrass-hermes).
 on:
-  push:
-    branches: [main]
-    paths: ["server/**", "js/**", "css/**", "icons/**", "index.html", "sw.js", "manifest.webmanifest", ".github/workflows/hf-space.yml"]
   workflow_dispatch:
 
 jobs:

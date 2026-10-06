@@ -201,21 +201,31 @@ function showPlan(p) {
   store.set("lastPlan", { at: Date.now(), place: current.place, fc: current.fc, spots: current.spots, plan: p });
 }
 
+// The optional Hermes server: only offer it when it actually answers.
+let serverCheck;
+function serverIsUp() {
+  serverCheck ??= fetch(`${settings.serverUrl.replace(/\/$/, "")}/health`, { signal: AbortSignal.timeout(4000) })
+    .then((r) => r.ok)
+    .catch(() => false);
+  return serverCheck;
+}
+
 // Ollama and cached in-browser models write right away. A first-time 1 GB download waits for a tap.
 async function maybeWriteWithAI() {
   if (settings.ai === "none") return;
   const model = resolveModel(settings.model, await hasWebGPU());
   if (settings.ai === "local" && !(await isModelCached(model))) {
+    const server = await serverIsUp();
     $("ai-note").innerHTML = `<div class="row">
-        <button class="btn" id="ai-start">✨ On-device AI</button>
-        <button class="btn" id="ai-server">☁️ Ask Hermes (no download)</button>
+        <button class="btn" id="ai-start">✨ Let the on-device AI write it</button>
+        ${server ? `<button class="btn" id="ai-server">☁️ Ask Hermes (no download)</button>` : ""}
       </div>
-      <small>✨ ${esc(model.name)} downloads once (${esc(model.size)}), then runs on this phone, even offline.<br>
-      ☁️ Hermes 3 on our server answers now. It gets only the weather and place names, never your location or photos.</small>`;
+      <small>✨ ${esc(model.name)} downloads once (${esc(model.size)}), then runs on this phone, even offline.
+      ${server ? "<br>☁️ Hermes 3 on our server answers now. It gets only the weather and place names, never your location or photos." : ""}</small>`;
     $("ai-note").hidden = false;
     $("rewrite").hidden = true;
     $("ai-start").addEventListener("click", () => writeWithAI(), { once: true });
-    $("ai-server").addEventListener("click", () => writeWithAI({ ai: "server" }), { once: true });
+    $("ai-server")?.addEventListener("click", () => writeWithAI({ ai: "server" }), { once: true });
     return;
   }
   writeWithAI();

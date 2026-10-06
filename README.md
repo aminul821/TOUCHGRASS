@@ -20,7 +20,7 @@ The screen part takes a minute. The rest happens outside.
 |---|---|---|
 | Write the plan | **Qwen 2.5 1.5B** (default), Llama 3.2 1B or Gemma 3 1B, open weights | [WebLLM](https://github.com/mlc-ai/web-llm) on WebGPU |
 | …on phones without WebGPU | **Qwen 3 0.6B**, open weights (`onnx-community/Qwen3-0.6B-ONNX`) | [transformers.js](https://github.com/huggingface/transformers.js) on WebAssembly (CPU) |
-| …or with no download | **Hermes 3** (Llama 3.2 3B, Nous Research, open weights, `hermes3:3b`) | [Ollama](https://ollama.com) on our server (Hugging Face Spaces) |
+| …or optionally on a server | **Hermes 3** (Llama 3.2 3B, Nous Research, open weights, `hermes3:3b`) | [Ollama](https://ollama.com) in `server/` (Docker) |
 | Or write the plan | Any model on your own [Ollama](https://ollama.com), e.g. `gemma3:4b` | Ollama on your computer |
 | Check the photo | **CLIP ViT-B/32**, open weights (`Xenova/clip-vit-base-patch32`) | [transformers.js](https://github.com/huggingface/transformers.js) (WebAssembly, works on phones) |
 
@@ -34,30 +34,27 @@ The screen part takes a minute. The rest happens outside.
 - **Never breaks.** No WebGPU, no connection, or a model error? You still get the plain plan. A photo that couldn't be checked is never counted.
 - **Your data stays put.** The journal, streak and photo thumbnails live in your browser's storage on this device. **Delete my journal** wipes them.
 
-## ☁️ Hosting: Render + Hugging Face (both free, no card)
+## ☁️ Hosting
 
-| Part | Where | Why |
-|---|---|---|
-| Website (front end) | **Render** static site, from `render.yaml` (also GitHub Pages) | Free, global CDN, deploys on every push |
-| Hermes 3 server | **Hugging Face Spaces**, free CPU (2 vCPU, 16 GB RAM) | Enough RAM for Hermes 3 3B, no card needed |
-
-Not every phone can download a 1 GB model. So the plan card offers two buttons: **✨ On-device AI**
-and **☁️ Ask Hermes (no download)**. The second one calls the server in `server/`, which runs
-**Hermes 3 3B** (Nous Research, open weights) on **Ollama**, CPU only.
-
-- **It gets only the facts:** the weather window and place names. Never your GPS coordinates, never photos. Photos are always checked on the phone.
-- **It also serves the website**, so the Space URL is a complete copy of the app.
-- **Small image:** it copies only Ollama's binaries and CPU libraries (no 9 GB of GPU libraries) and bakes the model in, so restarts never re-download it.
-- **Protected:** Ollama stays private on `127.0.0.1`. The public API is `POST /api/plan` with cleaned, size-capped input, CORS for the site's domains only, a per-visitor rate limit, and one generation at a time with a short queue.
+| Part | Where |
+|---|---|
+| Website | **GitHub Pages**, and **Render** as a free static site (`render.yaml` Blueprint) |
+| AI | **In the visitor's browser.** No server needed. |
+| Optional Hermes 3 server | `server/`: any Docker host with ~4 GB RAM. Not deployed right now. |
 
 **Deploy the website on Render:** Dashboard → **New → Blueprint** → pick this repo → Apply.
 
-**Deploy the Hermes server on Hugging Face:** create a Hugging Face token with **write** access
-(Settings → Access Tokens), then add it to this GitHub repo as the secret **`HF_TOKEN`**
-(Settings → Secrets and variables → Actions). The `hf-space.yml` workflow creates the Space
-`touchgrass-hermes` and deploys it. The first build takes ~10–15 minutes (it downloads Hermes 3).
-If your Hugging Face username isn't `aminul821`, update `DEFAULT_SERVER_URL` in `js/libs.js`
-(the workflow prints the right URL).
+### Optional: the Hermes 3 server
+
+For phones that can't download a model, `server/` runs **Hermes 3 3B** (Nous Research, open
+weights) on **Ollama**, CPU only, and serves the website too. When `DEFAULT_SERVER_URL`
+(`js/libs.js`) answers `/health`, the plan card adds a **☁️ Ask Hermes (no download)** button.
+Otherwise the button stays hidden.
+
+- **It gets only the facts:** the weather window and place names. Never GPS coordinates, never photos.
+- **Small image:** it copies only Ollama's binaries and CPU libraries (376 MB instead of 9 GB) and bakes the model in.
+- **Protected:** Ollama stays private on `127.0.0.1`. The API (`POST /api/plan`) has cleaned, size-capped input, CORS for the site's domains, a per-visitor rate limit, and one generation at a time.
+- **Where to host it:** it needs ~2.5 GB of RAM, which means a paid plan on Render (Pro) or a Hugging Face PRO account (Docker Spaces; `.github/workflows/hf-space.yml` deploys it with an `HF_TOKEN` secret). Free tiers don't have enough memory.
 
 Run the server locally with Docker:
 
@@ -112,13 +109,13 @@ sw.js                 offline app shell
 server/index.mjs      Hermes server: /api/plan → Hermes 3 on Ollama, plus the website
 server/Dockerfile     Ollama (CPU only) + hermes3:3b + Node
 render.yaml           Render Blueprint: the website as a free static site
-.github/workflows/    tests + GitHub Pages, and the Hugging Face Space deploy
+.github/workflows/    tests + GitHub Pages, and an optional Hugging Face Space deploy
 tests/                node --test unit tests
 ```
 
 ## 🙏 Built on
 
-[Hermes 3](https://nousresearch.com/hermes3/) · [Ollama](https://ollama.com) · [Render](https://render.com) · [Hugging Face Spaces](https://huggingface.co/spaces) · [WebLLM](https://github.com/mlc-ai/web-llm) · [Qwen 2.5](https://github.com/QwenLM/Qwen2.5) · [transformers.js](https://github.com/huggingface/transformers.js) · [CLIP](https://github.com/openai/CLIP) ·
+[Hermes 3](https://nousresearch.com/hermes3/) · [Ollama](https://ollama.com) · [Render](https://render.com) · [WebLLM](https://github.com/mlc-ai/web-llm) · [Qwen 2.5](https://github.com/QwenLM/Qwen2.5) · [transformers.js](https://github.com/huggingface/transformers.js) · [CLIP](https://github.com/openai/CLIP) ·
 [Open-Meteo](https://open-meteo.com) · [OpenStreetMap](https://www.openstreetmap.org/copyright) (© OpenStreetMap contributors, ODbL) · [Leaflet](https://leafletjs.com)
 
 MIT licensed.
