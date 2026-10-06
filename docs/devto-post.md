@@ -20,9 +20,9 @@ It's for anyone who opens their phone "for a minute" and looks up two hours late
 
 ## Demo
 
-**Live:** https://touchgrass-zxhn.onrender.com (on Render) · mirror: https://aminul821.github.io/TOUCHGRASS/
+**Try it live:** https://touchgrass-zxhn.onrender.com (hosted on Render) · mirror: https://aminul821.github.io/TOUCHGRASS/
 
-<!-- TODO: add a short phone screen recording: location → plan → I'm going outside → photo → streak -->
+Open it on your phone (Chrome or Edge on Android works best), tap **📍 Use my location**, and you'll have a plan in a few seconds. The first time you tap **✨ Let the on-device AI write it**, the model downloads once (0.5–1 GB, so use Wi-Fi). After that it runs on your phone, even offline.
 
 ## Code
 
@@ -32,7 +32,7 @@ No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles 
 
 ## How I Built It
 
-**Everything AI runs in the visitor's browser.** There's no backend at all, just a static site on GitHub Pages.
+**Everything AI runs in the visitor's browser.** There's no backend at all, just a static site on Render.
 
 - **Plan writer:** [WebLLM](https://github.com/mlc-ai/web-llm) runs **Qwen 2.5 1.5B Instruct** (open weights, 4-bit) on WebGPU. You can switch to Llama 3.2 1B or Gemma 3 1B, or point it at your own **Ollama** server. On phones with no WebGPU, it automatically uses **Qwen 3 0.6B** through transformers.js on the CPU, so every phone gets the AI plan.
 - **Optional Hermes server:** for phones that can't download a model, the repo also has a small Docker server (`server/`) that runs **Hermes 3 3B** (Nous Research, open weights) on **Ollama**, CPU only. It gets only the facts, never coordinates or photos. It needs ~2.5 GB of RAM, so it isn't deployed on a free tier. The site only shows its button when the server answers.
@@ -56,18 +56,12 @@ No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles 
 - **Swap models freely.** A dropdown switches between Qwen, Llama and Gemma. Got a gaming PC? Point it at Ollama and use a bigger model. No vendor lock-in and no deprecation emails.
 - **It works where closed APIs can't:** on a hill with one bar of signal, after the models are cached.
 - **Open maps make it honest.** The plan can only use places that exist in OpenStreetMap, the same map local hikers and gardeners edit.
-
-<!-- TODO: where did the open approach beat a closed one for you in practice? e.g. how fast Qwen 1.5B ran on your phone or laptop -->
-
-## Taking it outside
-
-<!-- TODO (bonus points): use it for real. Which spot did it pick? Did you finish the mission? Did CLIP catch you trying to cheat with a screenshot? Add a journal screenshot. -->
+- **It runs on every phone, not just new ones.** Because the models are open, I could pick a small one for phones without WebGPU (Qwen 3 0.6B on the CPU) and a bigger one for phones with a GPU. With a closed API I'd get one model at one price, and nothing at all offline.
 
 ## My Agent Session
 
-<!-- Optional: save the session with DevRelay and embed it here with the agent_session tag. -->
+I built Touch Grass with **Claude Code** as my coding agent. I described the idea and made the calls (website instead of a bot, which models, where to host), and the agent wrote the code, tests and docs. Then it checked the site in a real Chromium browser, light and dark mode, and loaded the real WebLLM and transformers.js libraries to make sure they work. The open-weight models are what run inside the app; Claude Code was only the tool I used to build it.
 
 ## Prize Categories
 
-<!-- List the partner categories you're entering. -->
 - **Render**: Render hosts the app's front end at https://touchgrass-zxhn.onrender.com (static site from a `render.yaml` Blueprint, redeployed on every push).
