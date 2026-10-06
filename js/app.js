@@ -1,6 +1,6 @@
 // Touch Grass: the page. Everything runs in this browser; state lives in localStorage.
 import * as outdoors from "./outdoors.js";
-import { hasWebGPU } from "./libs.js";
+import { DEFAULT_SERVER_URL, hasWebGPU } from "./libs.js";
 import { MODELS, buildFacts, isModelCached, modelLabel, resolveModel, splitMission, templatePlan, writePlan } from "./plan.js";
 import { checkPhoto } from "./vision.js";
 import { emptyJournal, liveStreak, localDay, logOuting, totalDays } from "./journal.js";
@@ -38,6 +38,7 @@ const settings = {
   model: MODELS[0].id,
   ollamaUrl: "http://localhost:11434",
   ollamaModel: "gemma3:4b",
+  serverUrl: DEFAULT_SERVER_URL,
   ...store.get("settings", {}),
 };
 if (settings.ai === "webllm") settings.ai = "local"; // older setting name
@@ -205,24 +206,29 @@ async function maybeWriteWithAI() {
   if (settings.ai === "none") return;
   const model = resolveModel(settings.model, await hasWebGPU());
   if (settings.ai === "local" && !(await isModelCached(model))) {
-    $("ai-note").innerHTML = `<button class="btn" id="ai-start">✨ Let the on-device AI write it</button>
-      <br><small>${esc(model.name)}: one-time download, ${esc(model.size)}. After that it runs right here, even offline.</small>`;
+    $("ai-note").innerHTML = `<div class="row">
+        <button class="btn" id="ai-start">✨ On-device AI</button>
+        <button class="btn" id="ai-server">☁️ Ask Hermes (no download)</button>
+      </div>
+      <small>✨ ${esc(model.name)} downloads once (${esc(model.size)}), then runs on this phone, even offline.<br>
+      ☁️ Hermes 3 on our server answers now. It gets only the weather and place names, never your location or photos.</small>`;
     $("ai-note").hidden = false;
     $("rewrite").hidden = true;
-    $("ai-start").addEventListener("click", writeWithAI, { once: true });
+    $("ai-start").addEventListener("click", () => writeWithAI(), { once: true });
+    $("ai-server").addEventListener("click", () => writeWithAI({ ai: "server" }), { once: true });
     return;
   }
   writeWithAI();
 }
 
-async function writeWithAI() {
+async function writeWithAI(override = {}) {
   if (!current) return;
   $("ai-note").hidden = true;
   $("rewrite").hidden = true;
   $("ai-plan").classList.add("loading");
   $("ai-source").textContent = "🧠 thinking…";
   const progress = $("ai-progress");
-  const result = await writePlan(current.facts, settings, {
+  const result = await writePlan(current.facts, { ...settings, ...override }, {
     onProgress: (p) => {
       progress.hidden = false;
       $("ai-bar").style.width = `${Math.round((p.progress || 0) * 100)}%`;
@@ -236,7 +242,7 @@ async function writeWithAI() {
     $("ai-note").hidden = false;
   }
 }
-$("rewrite").addEventListener("click", writeWithAI);
+$("rewrite").addEventListener("click", () => writeWithAI(current?.plan?.source?.includes("server") ? { ai: "server" } : {}));
 
 // Invite friends: the plan as plain text, via the phone's share sheet (or the clipboard).
 function planText() {
@@ -441,6 +447,7 @@ function renderSettings() {
   $("model").value = settings.model;
   document.querySelectorAll('input[name="ai"]').forEach((r) => (r.checked = r.value === settings.ai));
   $("ollama-url").value = settings.ollamaUrl;
+  $("server-url").value = settings.serverUrl;
   $("ollama-model").value = settings.ollamaModel;
   document.querySelectorAll(".origin").forEach((el) => (el.textContent = location.origin));
 }
@@ -450,6 +457,7 @@ function saveSettings() {
   settings.model = $("model").value;
   settings.ollamaUrl = $("ollama-url").value.trim() || "http://localhost:11434";
   settings.ollamaModel = $("ollama-model").value.trim() || "gemma3:4b";
+  settings.serverUrl = $("server-url").value.trim() || DEFAULT_SERVER_URL;
   store.set("settings", settings);
 }
 $("settings").addEventListener("change", saveSettings);

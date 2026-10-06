@@ -105,3 +105,24 @@ test("a failing AI falls back to the template instead of breaking", async () => 
   assert.match(r.error, /403/);
   assert.match(r.plan, /Botanical Garden/);
 });
+
+test("server backend posts the facts and labels the source", async () => {
+  let sent;
+  const fetchFn = async (url, init) => {
+    sent = { url, body: JSON.parse(init.body) };
+    return { ok: true, json: async () => ({ text: "Go to Botanical Garden.\nMission: find moss." }) };
+  };
+  const r = await writePlan(await facts(), { ai: "server", serverUrl: "https://tg.onrender.com/" }, { fetchFn });
+  assert.equal(sent.url, "https://tg.onrender.com/api/plan");
+  assert.ok(sent.body.facts.nearby_spots.length);
+  assert.ok(!JSON.stringify(sent.body).includes("23.81")); // no coordinates leave the phone
+  assert.equal(r.source, "Hermes 3 · Touch Grass server");
+  assert.equal(r.mission, "find moss.");
+});
+
+test("a busy server falls back to the template with its message", async () => {
+  const fetchFn = async () => ({ ok: false, status: 503, json: async () => ({ error: "The server is busy. Try again soon." }) });
+  const r = await writePlan(await facts(), { ai: "server", serverUrl: "https://x" }, { fetchFn });
+  assert.equal(r.source, "template");
+  assert.match(r.error, /busy/);
+});

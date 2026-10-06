@@ -134,6 +134,11 @@
         <label><input type="radio" name="ai" value="local"> In this browser (open-weight model)</label>
         <select id="model" aria-label="Model"></select>
         <small class="muted" id="gpu-note"></small>
+        <label><input type="radio" name="ai" value="server"> Hermes 3 on the Touch Grass server (Render)</label>
+        <div class="ollama">
+          <input id="server-url" aria-label="Server URL" placeholder="https://touchgrass-agent.onrender.com">
+          <small class="muted">Gets only the weather and place names, never your location or photos.</small>
+        </div>
         <label><input type="radio" name="ai" value="ollama"> Ollama on this computer</label>
         <div class="ollama">
           <input id="ollama-url" aria-label="Ollama URL" placeholder="http://localhost:11434">

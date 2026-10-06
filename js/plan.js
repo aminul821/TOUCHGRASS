@@ -1,6 +1,8 @@
 // Writes the outing plan. The AI runs on the visitor's own device:
 //  - "local":  an open-weight model in the browser. With WebGPU: WebLLM (MLC).
 //              Without WebGPU (many phones): transformers.js on WebAssembly.
+//  - "server": the Touch Grass server on Render (Hermes 3 on Ollama, open weights).
+//              Gets only these facts: no coordinates, no photos.
 //  - "ollama": an Ollama server on this computer (needs OLLAMA_ORIGINS set to this site)
 //  - "none":   no AI, a plain template
 // The model only gets facts from outdoors.js and is told to use only those places.
@@ -138,6 +140,17 @@ export async function writeWithOllama(facts, { url, model }, fetchFn = fetch) {
   return (await res.json()).message?.content || "";
 }
 
+export async function writeWithServer(facts, url, fetchFn = fetch) {
+  const res = await fetchFn(`${url.replace(/\/$/, "")}/api/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ facts }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `server returned HTTP ${res.status}`);
+  return body.text || "";
+}
+
 // Returns {plan, mission, source}. Never throws: falls back to the template.
 export async function writePlan(facts, settings, { onProgress, fetchFn = fetch, importFn = importLib, gpu } = {}) {
   const fallback = (error) => ({ ...splitMission(templatePlan(facts)), source: "template", ...(error && { error }) });
@@ -145,7 +158,10 @@ export async function writePlan(facts, settings, { onProgress, fetchFn = fetch, 
   try {
     let text;
     let source;
-    if (settings.ai === "ollama") {
+    if (settings.ai === "server") {
+      text = await writeWithServer(facts, settings.serverUrl, fetchFn);
+      source = "Hermes 3 · Touch Grass server";
+    } else if (settings.ai === "ollama") {
       text = await writeWithOllama(facts, { url: settings.ollamaUrl, model: settings.ollamaModel }, fetchFn);
       source = settings.ollamaModel;
     } else {
@@ -156,7 +172,7 @@ export async function writePlan(facts, settings, { onProgress, fetchFn = fetch, 
     }
     text = stripThinking(text || "");
     if (!text) return fallback("the model returned nothing");
-    return { ...splitMission(text), source: `${source} · on your device` };
+    return { ...splitMission(text), source: settings.ai === "server" ? source : `${source} · on your device` };
   } catch (e) {
     console.warn("AI plan failed, using the template:", e);
     return fallback(e.message || String(e));

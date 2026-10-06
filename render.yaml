@@ -1,0 +1,17 @@
+# Render Blueprint: Dashboard → New → Blueprint → pick this repo.
+# One web service: the Touch Grass website + Hermes 3 (open weights) on Ollama.
+services:
+  - type: web
+    name: touchgrass-agent
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    # Hermes 3 3B needs ~2.5 GB of RAM; Pro has 4 GB (Standard's 2 GB is too small).
+    plan: pro
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://aminul821.github.io
+      - key: RATE_PER_MINUTE
+        value: "6"

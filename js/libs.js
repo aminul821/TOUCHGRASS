@@ -18,3 +18,10 @@ export function hasWebGPU() {
   })();
   return gpuCheck;
 }
+
+// The Touch Grass server on Render (Hermes 3 on Ollama). When the site itself is served
+// from Render, use the same origin. Change it in ⚙️ AI settings if your URL differs.
+export const DEFAULT_SERVER_URL =
+  typeof location !== "undefined" && location.hostname.endsWith(".onrender.com")
+    ? location.origin
+    : "https://touchgrass-agent.onrender.com";
