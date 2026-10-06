@@ -112,3 +112,13 @@ test("serves the website but nothing else", async (t) => {
   });
   assert.equal(code, 404);
 });
+
+test("wildcard origins match subdomains only", async (t) => {
+  const s = await start({ ALLOWED_ORIGINS: "https://*.onrender.com" });
+  t.after(s.close);
+  const allow = async (o) => (await fetch(`${s.base}/health`, { headers: { Origin: o } })).headers.get("access-control-allow-origin");
+  assert.equal(await allow("https://touchgrass.onrender.com"), "https://touchgrass.onrender.com");
+  assert.equal(await allow("https://evil.com/.onrender.com"), null);
+  assert.equal(await allow("http://touchgrass.onrender.com"), null);
+  assert.equal(await allow("https://onrender.com.evil.com"), null);
+});

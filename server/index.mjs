@@ -1,4 +1,4 @@
-// Touch Grass server: runs on Render next to Ollama (Hermes 3, open weights).
+// Touch Grass server: runs next to Ollama (Hermes 3, open weights), e.g. on Hugging Face Spaces.
 //
 // - POST /api/plan  {facts}  -> {text, model}   the same facts the browser would give its
 //                                               on-device model; no coordinates, no photos
@@ -141,9 +141,25 @@ export function createServer(cfg = config(), fetchFn = fetch) {
     return false;
   }
 
+  // Exact origins, or "https://*.example.com" for any subdomain.
+  function allowedOrigin(origin) {
+    let u;
+    try {
+      u = new URL(origin);
+    } catch {
+      return false;
+    }
+    if (u.origin !== origin) return false; // no paths, users or other tricks
+    return cfg.origins.some((o) => {
+      if (o === origin) return true;
+      const m = o.match(/^(https?):\/\/\*(\.[^/]+)$/);
+      return Boolean(m) && u.protocol === `${m[1]}:` && u.hostname.endsWith(m[2]);
+    });
+  }
+
   function cors(req, res) {
     const origin = req.headers.origin;
-    if (origin && cfg.origins.includes(origin)) {
+    if (origin && allowedOrigin(origin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary", "Origin");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

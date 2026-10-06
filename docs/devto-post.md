@@ -35,7 +35,8 @@ No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles 
 **Everything AI runs in the visitor's browser.** There's no backend at all, just a static site on GitHub Pages.
 
 - **Plan writer:** [WebLLM](https://github.com/mlc-ai/web-llm) runs **Qwen 2.5 1.5B Instruct** (open weights, 4-bit) on WebGPU. You can switch to Llama 3.2 1B or Gemma 3 1B, or point it at your own **Ollama** server. On phones with no WebGPU, it automatically uses **Qwen 3 0.6B** through transformers.js on the CPU, so every phone gets the AI plan.
-- **No-download option on Render:** not every phone can download a 1 GB model, so there's also a **☁️ Ask Hermes** button. It calls a small server on **Render** running **Hermes 3 3B** (Nous Research, open weights) on **Ollama**, CPU only. It gets only the facts (weather window and place names), never coordinates or photos. The same Render service also hosts the website. The Docker image copies only Ollama's CPU binaries (376 MB instead of 9 GB) and bakes the model in.
+- **No-download option:** not every phone can download a 1 GB model, so there's also a **☁️ Ask Hermes** button. It calls a small server running **Hermes 3 3B** (Nous Research, open weights) on **Ollama**, CPU only, on a free Hugging Face Space (16 GB RAM). It gets only the facts (weather window and place names), never coordinates or photos. The Docker image copies only Ollama's CPU binaries (376 MB instead of 9 GB) and bakes the model in.
+- **Front end on Render:** the website is deployed on **Render** as a static site from a `render.yaml` Blueprint, and redeploys on every push.
 - **Photo checker:** [transformers.js](https://github.com/huggingface/transformers.js) runs **CLIP ViT-B/32** (open weights) on WebAssembly, so it works even on phones without WebGPU. It's zero-shot: the photo is scored against labels like "a photo of a park with grass and trees" vs "a screenshot of a phone or computer" vs "a photo taken indoors in a room". It passes only if 60%+ of the probability goes to the outdoor labels. A second pass names what's in it ("trees", "bird", "clouds").
 - **Open data:** [Open-Meteo](https://open-meteo.com) for the hourly forecast and sunset, and [OpenStreetMap](https://www.openstreetmap.org) via Overpass for green spots, drawn with Leaflet. Neither needs an API key.
 
@@ -69,4 +70,4 @@ No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles 
 ## Prize Categories
 
 <!-- List the partner categories you're entering. -->
-- **Render**: Render is the AI runtime for the no-download plans (Hermes 3 on Ollama) and also hosts the app's front end.
+- **Render**: Render hosts the app's front end (static site from a Blueprint).

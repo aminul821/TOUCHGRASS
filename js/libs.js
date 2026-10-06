@@ -19,9 +19,9 @@ export function hasWebGPU() {
   return gpuCheck;
 }
 
-// The Touch Grass server on Render (Hermes 3 on Ollama). When the site itself is served
-// from Render, use the same origin. Change it in ⚙️ AI settings if your URL differs.
+// The Touch Grass server (Hermes 3 on Ollama), deployed to Hugging Face Spaces. When the
+// site is served by that server itself, use the same origin. Change it in ⚙️ AI settings.
 export const DEFAULT_SERVER_URL =
-  typeof location !== "undefined" && location.hostname.endsWith(".onrender.com")
+  typeof location !== "undefined" && location.hostname.endsWith(".hf.space")
     ? location.origin
-    : "https://touchgrass-agent.onrender.com";
+    : "https://aminul821-touchgrass-hermes.hf.space";

@@ -1,0 +1,66 @@
+name: Deploy the Hermes server to Hugging Face Spaces
+
+# Needs one repository secret: HF_TOKEN (a Hugging Face token with "write" access).
+# Optional repository variable HF_SPACE (default: touchgrass-hermes).
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", "js/**", "css/**", "icons/**", "index.html", "sw.js", "manifest.webmanifest", ".github/workflows/hf-space.yml"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage the Space (same layout as the repo, Dockerfile at the root)
+        run: |
+          mkdir space
+          cp -r index.html sw.js manifest.webmanifest package.json css js icons server space/
+          cp server/Dockerfile space/Dockerfile
+          cat > space/README.md <<'MD'
+          ---
+          title: Touch Grass · Hermes 3
+          emoji: 🌿
+          colorFrom: green
+          colorTo: yellow
+          sdk: docker
+          app_port: 10000
+          pinned: false
+          license: mit
+          short_description: Outing plans from Hermes 3 (open weights) on Ollama
+          ---
+
+          The AI server for [Touch Grass](https://github.com/aminul821/TOUCHGRASS):
+          `POST /api/plan` turns weather and nearby places into a short outing plan with
+          **Hermes 3 3B** (Nous Research, open weights) running on **Ollama**, CPU only.
+          It also serves the website. Deployed automatically from GitHub.
+          MD
+          sed -i 's/^          //' space/README.md
+
+      - name: Upload to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE || 'touchgrass-hermes' }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::notice::No HF_TOKEN secret yet, so the Hugging Face deploy is skipped."
+            exit 0
+          fi
+          pip install -q huggingface_hub
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = f"{api.whoami()['name']}/{os.environ['HF_SPACE']}"
+          api.create_repo(repo, repo_type="space", space_sdk="docker", exist_ok=True)
+          api.upload_folder(folder_path="space", repo_id=repo, repo_type="space",
+                            commit_message="Deploy from GitHub", delete_patterns=["*"])
+          url = "https://" + repo.replace("/", "-").replace("_", "-").replace(".", "-").lower() + ".hf.space"
+          print(f"Space: https://huggingface.co/spaces/{repo}")
+          print(f"Server URL: {url}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(f"### Hermes server\n- Space: https://huggingface.co/spaces/{repo}\n- Server URL: {url}\n")
+          PY
