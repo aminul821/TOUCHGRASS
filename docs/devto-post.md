@@ -20,7 +20,7 @@ It's for anyone who opens their phone "for a minute" and looks up two hours late
 
 ## Demo
 
-**Live:** https://aminul821.github.io/TOUCHGRASS/
+**Live:** https://touchgrass-zxhn.onrender.com (on Render) · mirror: https://aminul821.github.io/TOUCHGRASS/
 
 <!-- TODO: add a short phone screen recording: location → plan → I'm going outside → photo → streak -->
 
@@ -70,4 +70,4 @@ No build step: plain HTML, CSS and JavaScript modules. `js/outdoors.js` handles 
 ## Prize Categories
 
 <!-- List the partner categories you're entering. -->
-- **Render**: Render hosts the app's front end (static site from a Blueprint).
+- **Render**: Render hosts the app's front end at https://touchgrass-zxhn.onrender.com (static site from a `render.yaml` Blueprint, redeployed on every push).

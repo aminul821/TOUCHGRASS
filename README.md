@@ -2,7 +2,7 @@
 
 **A website that tells you the best time and spot to go outside today, then checks that you actually went. The AI runs in your browser, so your location and photos never leave your phone.**
 
-**▶ Live: https://aminul821.github.io/TOUCHGRASS/** (also on Render)
+**▶ Live: https://touchgrass-zxhn.onrender.com** (Render) · [GitHub Pages mirror](https://aminul821.github.io/TOUCHGRASS/)
 
 Open it, tap **📍 Use my location**, and you get:
 
