@@ -66,7 +66,10 @@
         <p id="ai-plan" class="plan-text"></p>
         <p id="ai-mission" class="mission" hidden></p>
         <p class="muted small" id="ai-note" hidden></p>
-        <button class="link" id="rewrite">↻ Write another plan</button>
+        <div class="row">
+          <button class="link" id="rewrite">↻ Write another plan</button>
+          <button class="link" id="share" hidden>📤 Invite friends</button>
+        </div>
       </div>
 
       <div id="map" class="map" role="img" aria-label="Map of nearby green spots"></div>
@@ -128,8 +131,9 @@
       <summary>⚙️ AI settings</summary>
       <fieldset>
         <legend>Who writes the plan</legend>
-        <label><input type="radio" name="ai" value="webllm"> In this browser (WebGPU)</label>
+        <label><input type="radio" name="ai" value="local"> In this browser (open-weight model)</label>
         <select id="model" aria-label="Model"></select>
+        <small class="muted" id="gpu-note"></small>
         <label><input type="radio" name="ai" value="ollama"> Ollama on this computer</label>
         <div class="ollama">
           <input id="ollama-url" aria-label="Ollama URL" placeholder="http://localhost:11434">
@@ -139,7 +143,7 @@
         <label><input type="radio" name="ai" value="none"> No AI, plain plan</label>
       </fieldset>
       <p class="muted small">Photos are always checked in this browser by CLIP (open weights) with transformers.js.
-        Models download once (~1 GB for the plan, ~90 MB for photos), then load from this device, even offline.</p>
+        Models download once (0.5–1 GB for the plan, ~90 MB for photos), then load from this device, even offline.</p>
       <p class="muted small">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.
         Places and map: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
       <button class="link danger" id="wipe">Delete my journal and settings</button>

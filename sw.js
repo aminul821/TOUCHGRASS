@@ -1,6 +1,6 @@
 // Offline support: the app shell and its libraries are cached, so the page opens and the
 // photo check works on the trail with no signal. (The AI models cache themselves.)
-const VERSION = "touchgrass-v1";
+const VERSION = "touchgrass-v2";
 const SHELL = [
   "./",
   "index.html",
@@ -10,6 +10,7 @@ const SHELL = [
   "js/plan.js",
   "js/vision.js",
   "js/journal.js",
+  "js/libs.js",
   "manifest.webmanifest",
   "icons/icon.svg",
   "icons/icon-192.png",

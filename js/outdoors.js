@@ -4,14 +4,20 @@
 
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+// The main Overpass server is often busy (HTTP 429/504), so try public mirrors in turn.
+export const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
 
 export class OutdoorsError extends Error {}
 
-async function getJSON(fetchFn, url, init) {
+async function getJSON(fetchFn, url, init = {}, timeoutMs = 20000) {
   let res;
   try {
-    res = await fetchFn(url, init);
+    const signal = typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined;
+    res = await fetchFn(url, { ...init, signal });
   } catch (e) {
     throw new OutdoorsError(`${new URL(url).host} is unreachable (${e.message || e})`);
   }
@@ -89,9 +95,21 @@ export function parseSpots(data, lat, lon, limit = 6) {
 }
 
 export async function nearbySpots(lat, lon, { radius = 3000, fetchFn = fetch } = {}) {
-  const body = new URLSearchParams({ data: overpassQuery(lat, lon, radius) });
-  const data = await getJSON(fetchFn, OVERPASS_URL, { method: "POST", body });
-  return parseSpots(data, lat, lon);
+  const body = new URLSearchParams({ data: overpassQuery(lat, lon, radius) }).toString();
+  let lastError;
+  for (const url of OVERPASS_URLS) {
+    try {
+      const data = await getJSON(fetchFn, url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      return parseSpots(data, lat, lon);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
 }
 
 // ------------------------------------------------------------------ weather

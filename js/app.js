@@ -1,6 +1,7 @@
 // Touch Grass: the page. Everything runs in this browser; state lives in localStorage.
 import * as outdoors from "./outdoors.js";
-import { MODELS, WEBLLM_URL, buildFacts, splitMission, templatePlan, writePlan } from "./plan.js";
+import { hasWebGPU } from "./libs.js";
+import { MODELS, buildFacts, isModelCached, modelLabel, resolveModel, splitMission, templatePlan, writePlan } from "./plan.js";
 import { checkPhoto } from "./vision.js";
 import { emptyJournal, liveStreak, localDay, logOuting, totalDays } from "./journal.js";
 
@@ -33,12 +34,13 @@ const store = {
 };
 
 const settings = {
-  ai: "gpu" in navigator ? "webllm" : "none",
+  ai: "local",
   model: MODELS[0].id,
   ollamaUrl: "http://localhost:11434",
   ollamaModel: "gemma3:4b",
   ...store.get("settings", {}),
 };
+if (settings.ai === "webllm") settings.ai = "local"; // older setting name
 let journal = { ...emptyJournal(), ...store.get("journal", {}) };
 let current = null; // {place, fc, spots, facts}
 
@@ -194,25 +196,17 @@ function showPlan(p) {
   $("ai-mission").hidden = !p.mission;
   $("ai-source").textContent = p.source === "template" ? "plain plan" : `🧠 ${p.source}`;
   $("rewrite").hidden = settings.ai === "none";
+  $("share").hidden = false;
   store.set("lastPlan", { at: Date.now(), place: current.place, fc: current.fc, spots: current.spots, plan: p });
-}
-
-async function modelIsCached() {
-  try {
-    const webllm = await import(WEBLLM_URL);
-    return await webllm.hasModelInCache(settings.model);
-  } catch {
-    return false;
-  }
 }
 
 // Ollama and cached in-browser models write right away. A first-time 1 GB download waits for a tap.
 async function maybeWriteWithAI() {
   if (settings.ai === "none") return;
-  if (settings.ai === "webllm" && !(await modelIsCached())) {
-    const size = MODELS.find((m) => m.id === settings.model)?.label.split("·").pop().trim() || "";
+  const model = resolveModel(settings.model, await hasWebGPU());
+  if (settings.ai === "local" && !(await isModelCached(model))) {
     $("ai-note").innerHTML = `<button class="btn" id="ai-start">✨ Let the on-device AI write it</button>
-      <br><small>One-time download, ${esc(size)}. After that it runs offline, right here.</small>`;
+      <br><small>${esc(model.name)}: one-time download, ${esc(model.size)}. After that it runs right here, even offline.</small>`;
     $("ai-note").hidden = false;
     $("rewrite").hidden = true;
     $("ai-start").addEventListener("click", writeWithAI, { once: true });
@@ -243,6 +237,31 @@ async function writeWithAI() {
   }
 }
 $("rewrite").addEventListener("click", writeWithAI);
+
+// Invite friends: the plan as plain text, via the phone's share sheet (or the clipboard).
+function planText() {
+  const w = outdoors.bestWindow(current.fc);
+  const when = w.length ? `${current.fc.tomorrow ? "tomorrow " : ""}${outdoors.hhmm(w[0].time)}–${outdoors.hhmm(w.at(-1).time + 3600_000)}` : "";
+  const spot = current.spots[0];
+  return [
+    `🌿 Let's touch grass${when ? ` ${when}` : ""}!`,
+    spot ? `📍 ${spot.name}: ${outdoors.mapUrl(spot)}` : "",
+    current.plan?.plan || "",
+    current.plan?.mission ? `🎯 ${current.plan.mission}` : "",
+    `🌇 Sunset ${outdoors.hhmm(current.fc.sunset)}`,
+  ].filter(Boolean).join("\n");
+}
+
+$("share").addEventListener("click", async () => {
+  const text = planText();
+  try {
+    if (navigator.share) return await navigator.share({ title: "Touch Grass", text, url: location.href });
+    await navigator.clipboard.writeText(`${text}\n${location.href}`);
+    $("share").textContent = "✓ Copied, paste it to your friends";
+  } catch (e) {
+    if (e.name !== "AbortError") $("share").textContent = "Couldn't share on this browser";
+  }
+});
 
 function drawMap(place, spots) {
   if (!window.L) return; // offline, or the map library didn't load
@@ -413,7 +432,12 @@ function renderJournal() {
 // ------------------------------------------------------------------ settings
 
 function renderSettings() {
-  $("model").innerHTML = MODELS.map((m) => `<option value="${m.id}">${esc(m.label)}</option>`).join("");
+  $("model").innerHTML = MODELS.map((m) => `<option value="${m.id}">${esc(modelLabel(m))}</option>`).join("");
+  hasWebGPU().then((gpu) => {
+    $("gpu-note").textContent = gpu
+      ? "WebGPU is available here, so models run on your GPU."
+      : `No WebGPU on this browser, so ${resolveModel(MODELS[0].id, false).name} runs on the CPU instead (slower, but works).`;
+  });
   $("model").value = settings.model;
   document.querySelectorAll('input[name="ai"]').forEach((r) => (r.checked = r.value === settings.ai));
   $("ollama-url").value = settings.ollamaUrl;

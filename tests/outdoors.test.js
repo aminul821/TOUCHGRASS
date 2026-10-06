@@ -53,3 +53,21 @@ test("HTTP errors become OutdoorsError", async () => {
   const down = async () => ({ ok: false, status: 503 });
   await assert.rejects(o.forecast(1, 2, down), o.OutdoorsError);
 });
+
+test("a busy Overpass server falls through to a mirror", async () => {
+  const tried = [];
+  const base = fakeFetch();
+  const fetchFn = async (url, init) => {
+    tried.push(new URL(url).host);
+    if (tried.length === 1) return { ok: false, status: 504 };
+    return base(url, init);
+  };
+  const spots = await o.nearbySpots(23.81, 90.41, { fetchFn });
+  assert.equal(tried.length, 2);
+  assert.ok(spots.length > 0);
+});
+
+test("all Overpass servers down gives a clear error", async () => {
+  const fetchFn = async () => ({ ok: false, status: 429 });
+  await assert.rejects(o.nearbySpots(1, 2, { fetchFn }), /HTTP 429/);
+});

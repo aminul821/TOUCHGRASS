@@ -19,13 +19,17 @@ The screen part takes a minute. The rest happens outside.
 | Job | Model | Runs with |
 |---|---|---|
 | Write the plan | **Qwen 2.5 1.5B** (default), Llama 3.2 1B or Gemma 3 1B, open weights | [WebLLM](https://github.com/mlc-ai/web-llm) on WebGPU |
+| …on phones without WebGPU | **Qwen 3 0.6B**, open weights (`onnx-community/Qwen3-0.6B-ONNX`) | [transformers.js](https://github.com/huggingface/transformers.js) on WebAssembly (CPU) |
 | Or write the plan | Any model on your own [Ollama](https://ollama.com), e.g. `gemma3:4b` | Ollama on your computer |
 | Check the photo | **CLIP ViT-B/32**, open weights (`Xenova/clip-vit-base-patch32`) | [transformers.js](https://github.com/huggingface/transformers.js) (WebAssembly, works on phones) |
 
 - **No server, no API keys, no account.** It's a static site. Weather is from [Open-Meteo](https://open-meteo.com) and places from [OpenStreetMap](https://www.openstreetmap.org), both open data, called straight from the browser.
 - **Facts first, model second.** Code picks the time window and finds the places. The model only gets that JSON and is told to use only those places, so it can't send you to a park that doesn't exist.
-- **Asks before big downloads.** You get a plain plan right away. The ~1 GB language model downloads only when you tap **✨ Let the on-device AI write it**, once. After that it loads from the browser cache.
+- **AI on every phone.** If the browser has no usable GPU, the page switches to a smaller model that runs on the CPU instead of skipping the AI.
+- **Asks before big downloads.** You get a plain plan right away. The language model (0.5–1 GB) downloads only when you tap **✨ Let the on-device AI write it**, once. After that it loads from the browser cache.
 - **Works on the trail.** A service worker caches the app. Once the CLIP model is cached (~90 MB), the photo check and journal work with **no signal**. Your last plan is saved too.
+- **📤 Invite friends** shares the plan, the spot's map link and the mission through the phone's share sheet.
+- **Busy map servers are handled.** If the main OpenStreetMap (Overpass) server is overloaded, it tries public mirrors.
 - **Never breaks.** No WebGPU, no connection, or a model error? You still get the plain plan. A photo that couldn't be checked is never counted.
 - **Your data stays put.** The journal, streak and photo thumbnails live in your browser's storage on this device. **Delete my journal** wipes them.
 
@@ -41,7 +45,8 @@ npx http-server -c-1 -p 8080 .     # then open http://localhost:8080
 Location, WebGPU and the service worker need `https://` or `localhost`.
 
 **Deploying:** every push to `main` runs the tests and publishes to GitHub Pages
-(`.github/workflows/pages.yml`). Turn it on once in **Settings → Pages → Source: GitHub Actions**.
+(`.github/workflows/pages.yml`). One-time setup: the repo must be **public** (Pages on a
+free account needs that), then **Settings → Pages → Source: GitHub Actions**.
 
 **Using Ollama instead of the in-browser model:** open **⚙️ AI settings**, pick *Ollama on this computer*, then let the page talk to Ollama:
 
@@ -65,7 +70,8 @@ index.html            the five screens: where → plan → outside → proof →
 css/style.css         mobile-first, light and dark
 js/app.js             UI and state (localStorage)
 js/outdoors.js        Open-Meteo weather, OpenStreetMap spots, best-window scoring
-js/plan.js            facts → plan: WebLLM, Ollama or template
+js/plan.js            facts → plan: WebLLM (GPU), transformers.js (CPU), Ollama or template
+js/libs.js            pinned AI library URLs, WebGPU check
 js/vision.js          CLIP photo check (transformers.js)
 js/journal.js         streaks and journal (pure functions)
 sw.js                 offline app shell

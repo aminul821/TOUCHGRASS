@@ -2,7 +2,8 @@
 // transformers.js. The photo never leaves the phone, and once the model is cached this
 // works on the trail with no signal.
 
-export const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/+esm";
+import { TRANSFORMERS_URL, importLib } from "./libs.js";
+
 export const CLIP_MODEL = "Xenova/clip-vit-base-patch32";
 
 export const OUTDOOR_LABELS = [
@@ -39,10 +40,11 @@ export function judge(sceneScores, natureScores) {
 
 let classifier = null;
 
-export async function loadClip(onProgress, importFn = (u) => import(u)) {
+export async function loadClip(onProgress, importFn = importLib) {
   if (classifier) return classifier;
   const { pipeline } = await importFn(TRANSFORMERS_URL);
   classifier = await pipeline("zero-shot-image-classification", CLIP_MODEL, {
+    device: "wasm",
     progress_callback: (p) => {
       if (p.status === "progress" && onProgress) onProgress({ text: `Downloading ${p.file}`, progress: (p.progress || 0) / 100 });
     },
